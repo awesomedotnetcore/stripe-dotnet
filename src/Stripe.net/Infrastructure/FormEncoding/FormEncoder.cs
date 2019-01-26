@@ -4,10 +4,13 @@ namespace Stripe.Infrastructure.FormEncoding
     using System.Collections;
     using System.Collections.Generic;
     using System.Globalization;
+    using System.IO;
     using System.Linq;
     using System.Net;
+    using System.Net.Http;
     using System.Reflection;
     using Newtonsoft.Json;
+    using Stripe.Infrastructure.Http;
 
     /// <summary>
     /// This class provides methods to serialize various objects with
@@ -22,6 +25,60 @@ namespace Stripe.Infrastructure.FormEncoding
         public static string EncodeOptions(BaseOptions options)
         {
             return EncodeValue(options, null);
+        }
+
+        public static HttpContent EncodeOptionsContent(BaseOptions options)
+        {
+            if (options is MultipartOptions multipartOptions)
+            {
+                return EncodeOptionsMultipart(multipartOptions);
+            }
+
+            return new FormUrlEncodedUTF8Content(options);
+        }
+
+        public static MultipartFormDataContent EncodeOptionsMultipart(MultipartOptions options)
+        {
+            var content = new MultipartFormDataContent();
+
+            foreach (var property in options.GetType().GetRuntimeProperties())
+            {
+                // Skip properties not annotated with `[JsonProperty]`
+                var attribute = property.GetCustomAttribute<JsonPropertyAttribute>();
+                if (attribute == null)
+                {
+                    continue;
+                }
+
+                var key = attribute.PropertyName;
+                var value = property.GetValue(options);
+
+                if (value is Stream stream)
+                {
+                    string fileName = "blob";
+#if NET45 || NETSTANDARD2_0
+                    FileStream fileStream = stream as FileStream;
+                    if ((fileStream != null) && (!string.IsNullOrEmpty(fileStream.Name)))
+                    {
+                        fileName = fileStream.Name;
+                    }
+#endif
+                    var streamContent = new StreamContent(stream);
+
+                    content.Add(streamContent, key, fileName);
+                }
+                else
+                {
+                    var flatParams = FlattenParamsValue(value, key);
+
+                    foreach (var flatParam in flatParams)
+                    {
+                        content.Add(new StringContent(flatParam.Value), flatParam.Key);
+                    }
+                }
+            }
+
+            return content;
         }
 
         /// <summary>Creates the HTTP query string for a given dictionary.</summary>
@@ -58,22 +115,6 @@ namespace Stripe.Infrastructure.FormEncoding
         public static string JoinQueries(params string[] queries)
         {
             return string.Join("&", queries.Where(q => !string.IsNullOrEmpty(q)));
-        }
-
-        /// <summary>Append one or more query strings to a URL.</summary>
-        /// <param name="url">The base URL.</param>
-        /// <param name="queries">One or more query strings to be appended to the URL.</param>
-        /// <returns>The full URL with all the query strings.</returns>
-        public static string AppendQueries(string url, params string[] queries)
-        {
-            var fullQuery = JoinQueries(queries);
-
-            if (!string.IsNullOrEmpty(fullQuery))
-            {
-                url += "?" + fullQuery;
-            }
-
-            return url;
         }
 
         /// <summary>Creates the HTTP query string for a given value.</summary>

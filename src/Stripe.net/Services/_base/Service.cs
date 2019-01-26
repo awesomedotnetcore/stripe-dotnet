@@ -1,6 +1,7 @@
 namespace Stripe
 {
     using System.Collections.Generic;
+    using System.Linq;
     using System.Net;
     using System.Net.Http;
     using System.Reflection;
@@ -208,13 +209,14 @@ namespace Stripe
             CancellationToken cancellationToken = default(CancellationToken))
             where T : IStripeEntity
         {
+            options = this.SetupOptions(options, IsStripeList<T>());
             requestOptions = this.SetupRequestOptions(requestOptions);
-            var url = requestOptions.BaseUrl + path;
-            var wr = Requestor.GetRequestMessage(
-                this.ApplyAllParameters(options, url, IsStripeList<T>()),
+            return await StripeConfiguration.StripeClient.RequestAsync<T>(
                 method,
-                requestOptions);
-            return Mapper<T>.MapFromJson(await Requestor.ExecuteRequestAsync(wr));
+                path,
+                options,
+                requestOptions,
+                cancellationToken);
         }
 
         protected IEnumerable<T> ListRequestAutoPaging<T>(
@@ -259,7 +261,7 @@ namespace Stripe
                 requestOptions = new RequestOptions();
             }
 
-            if (!string.IsNullOrEmpty(this.ApiKey))
+            if (requestOptions.ApiKey == null && !string.IsNullOrEmpty(this.ApiKey))
             {
                 requestOptions.ApiKey = this.ApiKey;
             }
@@ -267,6 +269,21 @@ namespace Stripe
             requestOptions.BaseUrl = requestOptions.BaseUrl ?? this.BaseUrl;
 
             return requestOptions;
+        }
+
+        protected BaseOptions SetupOptions(BaseOptions options, bool isListMethod)
+        {
+            var expansions = this.Expansions(isListMethod);
+
+            if (!expansions.Any())
+            {
+                return options;
+            }
+
+            options = options ?? new BaseOptions();
+            options.Expand.AddRange(expansions);
+
+            return options;
         }
 
         protected virtual string ClassUrl()

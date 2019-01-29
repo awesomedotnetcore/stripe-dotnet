@@ -24,6 +24,11 @@ namespace Stripe.Infrastructure
 
         public Stripe.Infrastructure.Http.HttpClient HttpClient { get; }
 
+        public static Stripe.Infrastructure.Http.HttpClient BuildDefaultHttpClient()
+        {
+            return new SystemNetHttpClient();
+        }
+
         /// <summary>Sends a request to Stripe's API as an asynchronous operation.</summary>
         /// <typeparam name="T">Type of the Stripe entity returned by the API.</typeparam>
         /// <param name="method">The HTTP method.</param>
@@ -47,59 +52,34 @@ namespace Stripe.Infrastructure
             return ProcessResponse<T>(response);
         }
 
-        private static Stripe.Infrastructure.Http.HttpClient BuildDefaultHttpClient()
-        {
-            return new SystemNetHttpClient();
-        }
-
         private static T ProcessResponse<T>(Response response)
             where T : IStripeEntity
         {
-            var stripeResponse = BuildStripeResponse(response);
-
             if (response.StatusCode != HttpStatusCode.OK)
             {
-                throw BuildStripeException(response, stripeResponse);
+                throw BuildStripeException(response);
             }
 
             var obj = StripeEntity.FromJson<T>(response.Content);
-            obj.StripeResponse = stripeResponse;
+            obj.StripeResponse = response;
 
             return obj;
         }
 
-        private static StripeResponse BuildStripeResponse(Response response)
+        private static StripeException BuildStripeException(Response response)
         {
-            return new StripeResponse
+            var stripeError = false // TODO
+                ? StripeError.FromJson(response.Content)
+                : StripeError.FromJson(JObject.Parse(response.Content)["error"].ToString()); // TODO
+            stripeError.StripeResponse = response;
+
+            return new StripeException(
+                response.StatusCode,
+                stripeError,
+                stripeError.Message)
             {
-                RequestId = response.Headers.Contains("Request-Id")
-                    ? response.Headers.GetValues("Request-Id").First()
-                    : "n/a",
-                RequestDate = response.Headers.Contains("Date")
-                    ? Convert.ToDateTime(
-                        response.Headers.GetValues("Date").First(),
-                        CultureInfo.InvariantCulture)
-                    : default(DateTime),
-                ResponseJson = response.Content,
+                StripeResponse = response,
             };
-        }
-
-        private static StripeException BuildStripeException(
-            Response response,
-            StripeResponse stripeResponse)
-        {
-                var stripeError = false // TODO
-                    ? StripeError.FromJson(response.Content)
-                    : StripeError.FromJson(JObject.Parse(response.Content)["error"].ToString()); // TODO
-                stripeError.StripeResponse = stripeResponse;
-
-                return new StripeException(
-                    response.StatusCode,
-                    stripeError,
-                    stripeError.Message)
-                {
-                    StripeResponse = stripeResponse,
-                };
         }
     }
 }

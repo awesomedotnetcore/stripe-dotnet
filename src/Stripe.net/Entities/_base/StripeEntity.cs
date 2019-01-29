@@ -4,11 +4,12 @@ namespace Stripe
     using System.Reflection;
     using System.Runtime.CompilerServices;
     using Newtonsoft.Json;
+    using Stripe.Infrastructure.Http;
 
     public abstract class StripeEntity : IStripeEntity
     {
         [JsonIgnore]
-        public StripeResponse StripeResponse { get; set; }
+        public Response StripeResponse { get; set; }
 
         /// <summary>
         /// Deserializes the JSON to a Stripe object type. The type is automatically deduced from

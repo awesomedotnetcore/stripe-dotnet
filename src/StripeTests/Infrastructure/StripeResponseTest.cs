@@ -19,8 +19,8 @@ namespace StripeTests
             Assert.NotNull(this.charges);
             Assert.NotNull(this.charges.StripeResponse);
             Assert.NotNull(this.charges.StripeResponse.RequestId);
-            Assert.NotNull(this.charges.StripeResponse.ResponseJson);
-            Assert.True(this.charges.StripeResponse.RequestDate.Year > 0);
+            Assert.NotNull(this.charges.StripeResponse.Content);
+            Assert.True(this.charges.StripeResponse.Date?.Year > 0);
         }
     }
 }

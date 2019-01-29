@@ -15,6 +15,9 @@ namespace Stripe.Infrastructure.Http
         private static readonly string UserAgentString
             = $"Stripe/v1 .NetBindings/{StripeConfiguration.StripeNetVersion}";
 
+        private static readonly string StripeClientUserAgentString
+            = BuildStripeClientUserAgentString();
+
         private readonly System.Net.Http.HttpClient httpClient;
 
         /// <summary>
@@ -36,9 +39,6 @@ namespace Stripe.Infrastructure.Http
         /// <returns>The new instance of the <see cref="System.Net.Http.HttpClient"/> class.</returns>
         public static System.Net.Http.HttpClient BuildDefaultSystemNetHttpClient()
         {
-            // We set the User-Agent and X-Stripe-Client-User-Agent headers in each request
-            // message rather than through the client's <c>DefaultRequestHeaders</c> because we
-            // want these headers to be present even when a custom HTTP client is used.
             return new System.Net.Http.HttpClient()
             {
                 Timeout = StripeConfiguration.DefaultHttpTimeout,
@@ -74,16 +74,19 @@ namespace Stripe.Infrastructure.Http
 
         private static System.Net.Http.HttpRequestMessage BuildRequestMessage(Request request)
         {
-            var requestMessage = new System.Net.Http.HttpRequestMessage(request.Method, request.Uri);
+            var requestMessage = new System.Net.Http.HttpRequestMessage(
+                request.Method,
+                request.Uri);
 
-            // Standard headers
+            // User agent headers
+            // These are the same for every request. We prefer to set them here rather than through
+            // the client's `DefaultRequestHeaders` so that they're emitted even when a custom
+            // client is used
             requestMessage.Headers.UserAgent.ParseAdd(UserAgentString);
-            requestMessage.Headers.Authorization = request.AuthorizationHeader;
+            requestMessage.Headers.Add("X-Stripe-Client-User-Agent", StripeClientUserAgentString);
 
-            // Custom headers
-            requestMessage.Headers.Add(
-                "X-Stripe-Client-User-Agent",
-                BuildStripeClientUserAgentString());
+            // Request headers
+            requestMessage.Headers.Authorization = request.AuthorizationHeader;
             foreach (var header in request.StripeHeaders)
             {
                 requestMessage.Headers.Add(header.Key, header.Value);

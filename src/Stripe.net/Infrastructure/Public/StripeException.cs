@@ -2,6 +2,7 @@ namespace Stripe
 {
     using System;
     using System.Net;
+    using Stripe.Infrastructure.Http;
 
     public class StripeException : Exception
     {
@@ -30,6 +31,6 @@ namespace Stripe
 
         public StripeError StripeError { get; set; }
 
-        public StripeResponse StripeResponse { get; set; }
+        public Response StripeResponse { get; set; }
     }
 }

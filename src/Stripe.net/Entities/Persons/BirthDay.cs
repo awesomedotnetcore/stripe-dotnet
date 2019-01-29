@@ -2,6 +2,7 @@ namespace Stripe
 {
     using Newtonsoft.Json;
 
+    // TODO: Decide if we want to rename that class
     public class BirthDay : StripeEntity
     {
         [JsonProperty("day")]

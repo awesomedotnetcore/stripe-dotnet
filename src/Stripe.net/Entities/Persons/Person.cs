@@ -81,6 +81,6 @@ namespace Stripe
         public bool SsnLast4Provided { get; set; }
 
         [JsonProperty("verification")]
-        public LegalEntityVerification Verification { get; set; }
+        public PersonVerification Verification { get; set; }
     }
 }

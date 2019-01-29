@@ -26,7 +26,7 @@ namespace StripeTests
             this.createOptions = new AccountCreateOptions
             {
                 Type = AccountType.Custom,
-                ExternalAccountId = "tok_visa_debit",
+                ExternalAccount = "tok_visa_debit",
                 LegalEntity = new AccountLegalEntityOptions
                 {
                     AdditionalOwners = new List<AccountAdditionalOwner>

@@ -128,6 +128,10 @@ namespace Stripe.Infrastructure.FormEncoding
                     flatParams = SingleParam(keyPrefix, string.Empty);
                     break;
 
+                case IAnyOf anyOf:
+                    flatParams = FlattenParamsValue(anyOf.GetValue(), keyPrefix);
+                    break;
+
                 case INestedOptions options:
                     flatParams = FlattenParamsOptions(options, keyPrefix);
                     break;
